@@ -50,7 +50,7 @@ class Button:
 class DialogBox:
     def __init__(self, size=(1200, 700)):
         self.size = size
-        self.texture = pygame.image.load("assets/gray_dialog_box.png").convert_alpha()
+        self.texture = pygame.image.load("assets/dialog_texture.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, self.size)
         self.y_offset= 375
         self.x_offset= 200
@@ -154,6 +154,11 @@ class CUNE:
         self.static_click_sound = pygame.mixer.Sound("assets/select_sound.wav")
         self.dialogstate = False
         self.dialog_thread = None
+        self.dialog_button_size = (80, 30)
+        self.dialog_button_spacing = 20
+
+        self.static_button_size = (80, 30)
+        self.static_button_spacing = 20
 
         self.draggable_entities = {}
         self.dragging_entity = None
@@ -388,6 +393,11 @@ class CUNE:
 
         threading.Thread(target=animate, daemon=True).start()
 
+    def get_window_width(self):
+        return self.width
+    def get_window_height(self):
+        return self.height
+
     def show_entity(self, name, effect="slide_in", duration=1.0, start_x="~", start_y="~", initial_alpha=0,
                     final_alpha=255):
         if name not in self.characters:
@@ -435,6 +445,10 @@ class CUNE:
             print(f"Draggable entity '{name}' removed.")
         else:
             print(f"Entity '{name}' not found.")
+
+    def set_dialog_button_offset(self, offset_x, offset_y):
+        self.button_offset_x = offset_x
+        self.button_offset_y = offset_y
 
     def add_animated_entity(self, name, folder_path, position=None, z_level=0, frame_rate=10, fwdbwd=False):
         frame_files = sorted(
@@ -643,7 +657,7 @@ class CUNE:
         return button
 
     def layout_static_buttons(self, start_x, start_y, custom_positions=None):
-        button_spacing = 20
+        button_spacing = self.static_button_spacing
 
         for i, button in enumerate(self.static_buttons):
             if not button.positioned:
@@ -664,7 +678,15 @@ class CUNE:
                                            button.hover_color)
 
     def draw_button(self, button, x, y, color):
-        button_width, button_height = button.size
+        if button in self.buttons:
+            button_width, button_height = self.dialog_button_size
+        elif button in self.static_buttons:
+            button_width, button_height = self.static_button_size
+        else:
+            button_width, button_height = self.dialog_button_size
+            button.size = (button_width, button_height)
+        button.size = (button_width, button_height)
+
         button_rect = pygame.Rect(x, y, button_width, button_height)
         button_surface = pygame.Surface((button_width, button_height), pygame.SRCALPHA)
 
@@ -678,6 +700,7 @@ class CUNE:
 
         button_surface.fill((*button_color, button.alpha))
         self.screen.blit(button_surface, button_rect.topleft)
+
         button_font = self.font_button
         text_surf = button_font.render(button.text, True, (255, 255, 255))
         text_rect = text_surf.get_rect(center=button_rect.center)
@@ -819,13 +842,32 @@ class CUNE:
         self.dialog_box.draw(self.screen, (50, self.height - 200), self.dialog_text, self.font)
 
     def layout_buttons(self):
-        button_spacing = 20
+        button_spacing = self.dialog_button_spacing
         total_button_width = sum(button.size[0] for button in self.buttons) + (len(self.buttons) - 1) * button_spacing
-        start_x = (self.dialog_box.size[0] - total_button_width) // 2 - 192
+        start_x = (self.dialog_box.size[0] - total_button_width) // 2 + self.button_offset_x
         for i, button in enumerate(self.buttons):
-            button_width = button.size[0]
+            button_width, button_height = self.dialog_button_size
+            button.size = (button_width, button_height)
             button_color = button.hover_color if button == self.button_hovered else (50, 150, 250)
-            self.draw_button(button, start_x + i * (button_width + button_spacing), self.height - 218, button_color)
+
+            self.draw_button(button, start_x + i * (button_width + button_spacing),
+                             self.height - 218 + self.button_offset_y, button.hover_color)
+
+    def set_dialog_button_size(self, width, height):
+        self.dialog_button_size = (width, height)
+        for button in self.buttons:
+            button.size = (width, height)
+
+    def set_static_button_size(self, width, height):
+        self.static_button_size = (width, height)
+        for button in self.static_buttons:
+            button.size = (width, height)
+
+    def set_dialog_button_spacing(self, spacing):
+        self.dialog_button_spacing = spacing
+
+    def set_static_button_spacing(self, spacing):
+        self.static_button_spacing = spacing
 
     def load_dialogs(self, file_path):
         global CUNE_WARN
