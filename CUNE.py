@@ -980,7 +980,7 @@ class CUNE:
 
             if "input_box" in character:
                 if character["visible"]:
-                    character["input_box"].draw(self.screen)  # Draw input box entity
+                    character["input_box"].draw(self.screen)
             elif "text" in character:
                 font = character["font"]
                 text_surface = font.render(character["text"], True, character["color"])
@@ -1101,13 +1101,11 @@ class CUNE:
 
                                 break
 
-                    # Handle input box interaction
                     for name, entity in self.characters.items():
                         if "input_box" in entity:
                             entity["input_box"].handle_event(event)
 
                 elif event.type == pygame.KEYDOWN:
-                    # Process keyboard input for input boxes
                     for name, entity in self.characters.items():
                         if "input_box" in entity:
                             entity["input_box"].handle_event(event)
