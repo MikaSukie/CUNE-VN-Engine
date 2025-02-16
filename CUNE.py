@@ -11,7 +11,7 @@ color_setter = None
 CUNE_WARN = 0
 CUNE_ERR = 0
 custom_positions = {}
-V = False
+d_visible = False
 
 def install_pygame():
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pygame'])
@@ -29,7 +29,7 @@ class GameState(Enum):
     SETTINGS = 3
 
 class Button:
-    def __init__(self, text, command, hover_color=(200, 200, 200), normal_color=(50, 150, 250), size=(80, 30), alpha=255):
+    def __init__(self, text, command, hover_color=(200, 200, 200), normal_color=(50, 150, 250), size=(80, 30), alpha=255, visible=True):
         self.text = text
         self.command = command
         self.hover_color = hover_color
@@ -39,6 +39,7 @@ class Button:
         self.positioned = False
         self.default_position = None
         self.alpha = alpha
+        self.visible = visible
 
     def run_command_in_thread(self):
         command_thread = threading.Thread(target=self.command)
@@ -46,6 +47,48 @@ class Button:
 
     def set_default_position(self, x, y):
         self.default_position = (x, y)
+
+class InputBoxEntity:
+    def __init__(self, x, y, width=200, height=30, font=None,
+                 text_color=(0, 0, 0), bg_color=(255, 255, 255),
+                 border_color=(0, 0, 0), border_width=2):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = ""
+        self.font = font or pygame.font.SysFont("Arial", 18)
+        self.text_color = text_color
+        self.bg_color = bg_color
+        self.border_color = border_color
+        self.border_width = border_width
+        self.active = False
+        self.visible = True
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.visible and self.rect.collidepoint(event.pos):
+                self.active = not self.active
+            else:
+                self.active = False
+
+        if event.type == pygame.KEYDOWN and self.active:
+            if event.key == pygame.K_RETURN:
+                self.active = False
+            elif event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            else:
+                self.text += event.unicode
+
+    def draw(self, screen):
+        if not self.visible:
+            return
+        if self.bg_color[3] > 0:
+            pygame.draw.rect(screen, self.bg_color, self.rect)
+        if self.border_color[3] > 0 and self.border_width > 0:
+            pygame.draw.rect(screen, self.border_color, self.rect, self.border_width)
+        text_surface = self.font.render(self.text, True, self.text_color)
+        screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5))
+
+    def get_input(self):
+        return self.text
 
 class DialogBox:
     def __init__(self, size=(1200, 700)):
@@ -156,6 +199,7 @@ class CUNE:
         self.dialog_thread = None
         self.dialog_button_size = (80, 30)
         self.dialog_button_spacing = 20
+        self.disabled_buttons = []
 
         self.static_button_size = (80, 30)
         self.static_button_spacing = 20
@@ -297,6 +341,25 @@ class CUNE:
             self.font = pygame.font.Font(font_path, font_size)
         except Exception as e:
             print(f"Failed to set font: {e}")
+
+    def add_input_entity(self, name, x, y, width=200, height=30, z_level=0,
+                         text_color=(0, 0, 0), bg_color=(255, 255, 255, 255),
+                         border_color=(0, 0, 0, 255), border_width=2):
+        if len(bg_color) == 3:
+            bg_color = (*bg_color, 255)
+
+        if len(border_color) == 3:
+            border_color = (*border_color, 255)
+
+        input_box = InputBoxEntity(x, y, width, height, self.font, text_color,
+                                   bg_color, border_color, border_width)
+        self.characters[name] = {
+            "input_box": input_box,
+            "position": (x, y),
+            "visible": True,
+            "z_level": z_level
+        }
+        return input_box
 
     def set_button_font(self, font_path, font_size=18):
         try:
@@ -581,12 +644,12 @@ class CUNE:
         self.is_dialog_visible = False
 
     def dialog_visible_toggle(self):
-        global V
-        V = not V
-        if V:
-            CUNE.set_dialog_visible(self)
+        global d_visible
+        d_visible = not d_visible
+        if d_visible:
+            self.set_dialog_visible()
         else:
-            CUNE.set_dialog_not_visible(self)
+            self.set_dialog_not_visible()
 
     def play_audio(self, file_path, volume=1.0, repeat=False):
         try:
@@ -610,6 +673,9 @@ class CUNE:
         if self.dialog_index > 0:
             return self.current_dialog[self.dialog_index - 1].get('id', None)
         return None
+
+    def get_dialog_visible_state(self):
+        return d_visible
 
     def jump_to(self, dialog_id):
         for index, dialog in enumerate(self.current_dialog):
@@ -712,6 +778,9 @@ class CUNE:
     def remove_static_button(self, button_text):
         self.static_buttons = [button for button in self.static_buttons if button.text != button_text]
 
+    def remove_button(self, button_text):
+        self.buttons = [button for button in self.buttons if button.text != button_text]
+
     def next_dialog(self):
         self.update_dialog()
 
@@ -756,6 +825,11 @@ class CUNE:
             "color": color,
             "entity_bind": entity_bind
         }
+
+    def get_text_value(self, name):
+        if name in self.characters and "input_box" in self.characters[name]:
+            return self.characters[name]["input_box"].get_input()
+        return None
 
     def update_text_entity(self, name, new_content=None, new_font_path=None, new_size=None, new_color=None, tx_offset=50, ty_offset=-10):
         self.tey_offset = ty_offset
@@ -895,7 +969,7 @@ class CUNE:
             self.screen.blit(self.window_icon, self.window_icon_position)
 
         current_time = pygame.time.get_ticks()
-        sorted_characters = sorted(self.characters.items(), key=lambda c: c[1]["z_level"])
+        sorted_characters = sorted(self.characters.items(), key=lambda c: c[1].get("z_level", 0))
 
         for name, character in sorted_characters:
             if not character.get("visible", True):
@@ -904,7 +978,10 @@ class CUNE:
             alpha = character.get("alpha", 255)
             angle = character.get("angle", 0)
 
-            if "text" in character:
+            if "input_box" in character:
+                if character["visible"]:
+                    character["input_box"].draw(self.screen)  # Draw input box entity
+            elif "text" in character:
                 font = character["font"]
                 text_surface = font.render(character["text"], True, character["color"])
                 text_surface.set_alpha(alpha)
@@ -984,7 +1061,7 @@ class CUNE:
                             self.auto_thread = None
 
                     for button in self.static_buttons:
-                        if button.rect and button.rect.collidepoint(mouse_pos):
+                        if button.rect and button.rect.collidepoint(mouse_pos) and button.visible and button not in self.disabled_buttons:
                             self.static_click_sound.play()
                             button.run_command_in_thread()
                             break
@@ -1023,6 +1100,17 @@ class CUNE:
                                     )
 
                                 break
+
+                    # Handle input box interaction
+                    for name, entity in self.characters.items():
+                        if "input_box" in entity:
+                            entity["input_box"].handle_event(event)
+
+                elif event.type == pygame.KEYDOWN:
+                    # Process keyboard input for input boxes
+                    for name, entity in self.characters.items():
+                        if "input_box" in entity:
+                            entity["input_box"].handle_event(event)
 
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     if self.dragging_entity:
