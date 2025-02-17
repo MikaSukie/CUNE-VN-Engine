@@ -200,6 +200,7 @@ class CUNE:
         self.disabled_buttons = []
         pygame.mixer.init()
         self.audio_tracks = {}
+        self.player_name = None
 
         self.static_button_size = (80, 30)
         self.static_button_spacing = 20
@@ -207,6 +208,7 @@ class CUNE:
         self.draggable_entities = {}
         self.dragging_entity = None
         self.drag_offset = (0, 0)
+        self.button_volume = 0.5
 
         self.tex_offset = 0
         self.tey_offset = 0
@@ -259,6 +261,9 @@ class CUNE:
     def set_background(self, image_path):
         original_background = pygame.image.load(image_path).convert()
         self.background = pygame.transform.scale(original_background, (self.width, self.height))
+
+    def set_button_volume(self, volume):
+        self.button_volume = volume
 
     def change_entity_texture(self, name, new_image_path, scale_factor_setter=1.0, duration=None):
         if name not in self.characters:
@@ -323,9 +328,7 @@ class CUNE:
         scale_factor = entity["image"].get_width() / first_frame.get_width()
         scaled_frames = [pygame.transform.scale(frame, (int(frame.get_width() * scale_factor),
                                                         int(frame.get_height() * scale_factor))) for frame in
-                         new_frames]
-
-
+                                                        new_frames]
         entity["frames"] = scaled_frames
         entity["current_frame"] = 0
         entity["frame_rate"] = frame_rate
@@ -568,7 +571,13 @@ class CUNE:
         threading.Thread(target=animate, daemon=True).start()
 
     def set_dialog(self, dialog_lines):
-        self.current_dialog = dialog_lines
+        self.current_dialog = []
+        for entry in dialog_lines:
+            if isinstance(entry, dict) and "dialog" in entry:
+                raw_text = entry["dialog"]
+                player_name = self.player_name if self.player_name else "Player"
+                entry["dialog"] = raw_text.replace("{user}", player_name)
+            self.current_dialog.append(entry)
         self.dialog_index = 0
         self.dialog_text = ""
         self.is_dialog_visible = True
@@ -609,6 +618,8 @@ class CUNE:
     def update_dialog(self):
         if self.dialog_index < len(self.current_dialog):
             raw_text = self.current_dialog[self.dialog_index]['dialog']
+            player_name = self.player_name if self.player_name else "Player"
+            raw_text = raw_text.replace("{user}", player_name)
             formatted_text = self.wrap_dialog_text(raw_text)
             self.display_text(formatted_text)
             self.dialog_history.append(self.current_dialog[self.dialog_index])
@@ -649,7 +660,7 @@ class CUNE:
         else:
             self.set_dialog_not_visible()
 
-    def play_audio(self, file_path, volume=1.0, sound_id=None, repeat=False):
+    def play_audio(self, file_path, volume=0.5, sound_id=None, repeat=False):
         self.stop_audio(sound_id)
         try:
             if repeat:
@@ -802,7 +813,7 @@ class CUNE:
         if button == self.button_hovered or button == self.static_button_hovered:
             button_color = button.hover_color
             if button == self.button_hovered and self.last_button_hovered != button:
-                self.play_audio(self.hover_sound, 0.5, 0, False)
+                self.play_audio(self.hover_sound, self.button_volume, 0, False)
                 self.last_button_hovered = button
         else:
             button_color = button.normal_color
@@ -1099,13 +1110,13 @@ class CUNE:
 
                     for button in self.buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos):
-                            self.play_audio(self.click_sound, 0.5, 0, False)
+                            self.play_audio(self.click_sound, self.button_volume, 0, False)
                             button.run_command_in_thread()
                             self.auto_thread = None
 
                     for button in self.static_buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos) and button.visible and button not in self.disabled_buttons:
-                            self.play_audio(self.click_sound, 0.5, 0, False)
+                            self.play_audio(self.click_sound, self.button_volume, 0, False)
                             button.run_command_in_thread()
                             break
 
@@ -1211,7 +1222,7 @@ class CUNE:
                 self.last_button_hovered = None
 
             if self.static_button_hovered and self.static_button_hovered != self.last_static_button_hovered:
-                self.play_audio(self.hover_sound, 0.5, 0, False)
+                self.play_audio(self.hover_sound, self.button_volume, 0, False)
                 self.last_static_button_hovered = self.static_button_hovered
 
             self.draw()
