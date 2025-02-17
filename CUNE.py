@@ -198,6 +198,8 @@ class CUNE:
         self.dialog_button_size = (80, 30)
         self.dialog_button_spacing = 20
         self.disabled_buttons = []
+        pygame.mixer.init()
+        self.audio_tracks = {}
 
         self.static_button_size = (80, 30)
         self.static_button_spacing = 20
@@ -647,23 +649,68 @@ class CUNE:
         else:
             self.set_dialog_not_visible()
 
-    def play_audio(self, file_path, volume=1.0, repeat=False):
+    def play_audio(self, file_path, volume=1.0, sound_id=None, repeat=False):
+        self.stop_audio(sound_id)
         try:
             if repeat:
                 pygame.mixer.music.load(file_path)
                 pygame.mixer.music.set_volume(volume)
                 pygame.mixer.music.play(-1)
+                if sound_id is not None:
+                    self.audio_tracks[sound_id] = (pygame.mixer.music, None)
             else:
                 sound = pygame.mixer.Sound(file_path)
                 sound.set_volume(volume)
-                sound.play()
+                channel = sound.play()
+                if sound_id is not None:
+                    self.audio_tracks[sound_id] = (sound, channel)
         except pygame.error as e:
-            global CUNE_ERR
-            CUNE_ERR += 1
-            print(f"[CUNE-ERR ({CUNE_ERR})] Error: playing sound '{file_path}': {e}")
+            print(f"Error playing audio {file_path}: {e}")
 
-    def stop_audio(self):
-        pygame.mixer.music.stop()
+    def stop_audio(self, sound_id=None, fade_duration=0):
+        if sound_id is None:
+            if fade_duration > 0:
+                pygame.mixer.music.fadeout(int(fade_duration * 1000))
+                for sound, channel in self.audio_tracks.values():
+                    if channel:
+                        channel.fadeout(int(fade_duration * 1000))
+            else:
+                pygame.mixer.music.stop()
+                pygame.mixer.stop()
+            self.audio_tracks.clear()
+        else:
+            if sound_id in self.audio_tracks:
+                sound, channel = self.audio_tracks[sound_id]
+                if fade_duration > 0:
+                    if channel:
+                        channel.fadeout(int(fade_duration * 1000))
+                    else:
+                        pygame.mixer.music.fadeout(int(fade_duration * 1000))
+                    threading.Timer(fade_duration, lambda: self.audio_tracks.pop(sound_id, None)).start()
+                else:
+                    if channel:
+                        channel.stop()
+                    else:
+                        pygame.mixer.music.stop()
+                    del self.audio_tracks[sound_id]
+
+    def change_audio(self, file_path, volume=1.0, sound_id=None, fade_duration=None, repeat=False):
+        if sound_id in self.audio_tracks:
+            old_sound, old_channel = self.audio_tracks[sound_id]
+
+            if fade_duration:
+                if old_channel:
+                    old_channel.fadeout(int(fade_duration * 1000))
+                else:
+                    pygame.mixer.music.fadeout(int(fade_duration * 1000))
+
+            def play_new_audio():
+                pygame.time.delay(int(fade_duration * 1000) if fade_duration else 0)
+                self.play_audio(file_path, volume, sound_id, repeat)
+
+            threading.Thread(target=play_new_audio).start()
+        else:
+            self.play_audio(file_path, volume, sound_id, repeat)
 
     def get_current_dialog_id(self):
         if self.dialog_index > 0:
@@ -755,7 +802,7 @@ class CUNE:
         if button == self.button_hovered or button == self.static_button_hovered:
             button_color = button.hover_color
             if button == self.button_hovered and self.last_button_hovered != button:
-                self.play_audio(self.hover_sound, 0.5, False)
+                self.play_audio(self.hover_sound, 0.5, 0, False)
                 self.last_button_hovered = button
         else:
             button_color = button.normal_color
@@ -1052,13 +1099,13 @@ class CUNE:
 
                     for button in self.buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos):
-                            self.play_audio(self.click_sound, 0.5, False)
+                            self.play_audio(self.click_sound, 0.5, 0, False)
                             button.run_command_in_thread()
                             self.auto_thread = None
 
                     for button in self.static_buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos) and button.visible and button not in self.disabled_buttons:
-                            self.play_audio(self.click_sound, 0.5, False)
+                            self.play_audio(self.click_sound, 0.5, 0, False)
                             button.run_command_in_thread()
                             break
 
@@ -1164,7 +1211,7 @@ class CUNE:
                 self.last_button_hovered = None
 
             if self.static_button_hovered and self.static_button_hovered != self.last_static_button_hovered:
-                self.play_audio(self.hover_sound, 0.5, False)
+                self.play_audio(self.hover_sound, 0.5, 0, False)
                 self.last_static_button_hovered = self.static_button_hovered
 
             self.draw()
