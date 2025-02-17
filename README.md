@@ -8,8 +8,8 @@ to understand since the functions are self-explanatory, are named appropriately,
 I want to make the simplest, light-weight, and self-explanatory Visual novel engine that just
 gets to the point and lets you do your thing.
 
-The batch file runs the Python file so you do not need it unless you do not want to run the python3
-command over and over as I did. CUNE.py is the game engine. Yes. ONE FILE. I tried to keep it simple.
-The JSON ID assigner, which I forgot what it does but you can look through the code. I think you can
-write the dialog simply and the code should auto-format it to a readable format.
+The batch file runs the Python file (Json Assigner not the game engine) so you do not need it unless 
+you do not want to run the python3 command over and over as I did. CUNE.py is the game engine. Yes. ONE FILE. 
+I tried to keep it simple. The JSON ID assigner, which I forgot what it does but you can look through the code. 
+I think you can write the dialog simply and the code should auto-format it to a readable format.
 Settings.json and Dialogs.json are self-explanatory.
