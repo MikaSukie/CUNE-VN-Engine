@@ -11,7 +11,7 @@ color_setter = None
 CUNE_WARN = 0
 CUNE_ERR = 0
 custom_positions = {}
-d_visible = False
+d_visible = None
 
 def install_pygame():
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pygame'])
@@ -186,15 +186,13 @@ class CUNE:
         self.is_dialog_visible = False
         self.dialog_history = []
         self.load_dialogs("dialogs.json")
-        self.hover_sound = pygame.mixer.Sound("assets/hover_sound.wav")
+        self.hover_sound = pygame.mixer.Sound("assets/hover_sound2.wav")
         self.click_sound = pygame.mixer.Sound("assets/select_sound.wav")
         self.static_buttons = []
         self.static_button_x = 0
         self.static_button_y = 0
         self.static_button_hovered = None
         self.last_static_button_hovered = None
-        self.static_hover_sound = pygame.mixer.Sound("assets/hover_sound.wav")
-        self.static_click_sound = pygame.mixer.Sound("assets/select_sound.wav")
         self.dialogstate = False
         self.dialog_thread = None
         self.dialog_button_size = (80, 30)
@@ -219,9 +217,7 @@ class CUNE:
         }
     def change_button_sound(self, hover_path, click_path):
         self.hover_sound =        hover_path
-        self.static_hover_sound = hover_path
         self.click_sound =        click_path
-        self.static_click_sound = click_path
 
     def wrap_dialog_text(self, text):
         max_length = self.dialog_constraints.get("max_length", 50)
@@ -759,7 +755,7 @@ class CUNE:
         if button == self.button_hovered or button == self.static_button_hovered:
             button_color = button.hover_color
             if button == self.button_hovered and self.last_button_hovered != button:
-                self.hover_sound.play()
+                self.play_audio(self.hover_sound, 0.5, False)
                 self.last_button_hovered = button
         else:
             button_color = button.normal_color
@@ -1056,13 +1052,13 @@ class CUNE:
 
                     for button in self.buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos):
-                            self.click_sound.play()
+                            self.play_audio(self.click_sound, 0.5, False)
                             button.run_command_in_thread()
                             self.auto_thread = None
 
                     for button in self.static_buttons:
                         if button.rect and button.rect.collidepoint(mouse_pos) and button.visible and button not in self.disabled_buttons:
-                            self.static_click_sound.play()
+                            self.play_audio(self.click_sound, 0.5, False)
                             button.run_command_in_thread()
                             break
 
@@ -1168,7 +1164,7 @@ class CUNE:
                 self.last_button_hovered = None
 
             if self.static_button_hovered and self.static_button_hovered != self.last_static_button_hovered:
-                self.static_hover_sound.play()
+                self.play_audio(self.hover_sound, 0.5, False)
                 self.last_static_button_hovered = self.static_button_hovered
 
             self.draw()
