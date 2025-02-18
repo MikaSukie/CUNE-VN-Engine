@@ -1,4 +1,5 @@
 # CUNE-VN-Engine
+![Image Description](https://drive.google.com/uc?export=view&id=1U9ZsQGIi5L0T_oiA4XsCl4QUeWa5qNwq)
 Customizable Universal Novel Engine [OPEN SOURCE] (My first game engine that's versatile)
 All you need is a Python installation or a Venv in PyCharm. My engine "should" automatically install PyGame.
 You can disable it by removing the line. Since it is my first game engine I'll leave it open source. 
@@ -12,5 +13,3 @@ CUNE.py is the game engine. Yes. ONE FILE.
 I tried to keep it simple. The JSON ID assigner, which I forgot what it does but you can look through the code. 
 I think you can write the dialog simply and the code should auto-format it to a readable format.
 Settings.json and Dialogs.json are self-explanatory.
-
-![Image Description](https://drive.google.com/uc?export=view&id=1U9ZsQGIi5L0T_oiA4XsCl4QUeWa5qNwq)
