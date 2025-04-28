@@ -93,8 +93,11 @@ class InputBoxEntity:
 class DialogBox:
     def __init__(self, size=(1200, 700)):
         self.size = size
-        self.texture = pygame.image.load("assets/dialog_texture.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, self.size)
+        try:
+            self.texture = pygame.image.load("assets/dialog_texture.png").convert_alpha()
+            self.texture = pygame.transform.scale(self.texture, self.size)
+        except Exception as e:
+            print(e)
         self.y_offset= 375
         self.x_offset= 200
         self.D_offset_x = 0
@@ -185,9 +188,12 @@ class CUNE:
         pygame.mouse.set_visible(True)
         self.is_dialog_visible = False
         self.dialog_history = []
-        self.load_dialogs("dialogs.json")
-        self.hover_sound = pygame.mixer.Sound("assets/hover_sound2.wav")
-        self.click_sound = pygame.mixer.Sound("assets/select_sound.wav")
+        try:
+            self.load_dialogs("dialogs.json")
+            self.hover_sound = pygame.mixer.Sound("assets/hover_sound2.wav")
+            self.click_sound = pygame.mixer.Sound("assets/select_sound.wav")
+        except Exception as e:
+            print(e)
         self.static_buttons = []
         self.static_button_x = 0
         self.static_button_y = 0
