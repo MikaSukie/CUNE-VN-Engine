@@ -12,6 +12,7 @@ CUNE_WARN = 0
 CUNE_ERR = 0
 custom_positions = {}
 d_visible = None
+dialog_file = ""
 
 def install_pygame():
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pygame'])
@@ -93,11 +94,6 @@ class InputBoxEntity:
 class DialogBox:
     def __init__(self, size=(1200, 700)):
         self.size = size
-        try:
-            self.texture = pygame.image.load("assets/dialog_texture.png").convert_alpha()
-            self.texture = pygame.transform.scale(self.texture, self.size)
-        except Exception as e:
-            print(e)
         self.y_offset= 375
         self.x_offset= 200
         self.D_offset_x = 0
@@ -161,6 +157,11 @@ class SettingsManager:
         with open(self.settings_file, 'w') as f:
             json.dump(settings, f)
 
+
+def set_dialog_file(path):
+    global dialog_file
+    dialog_file = path
+
 class CUNE:
     def __init__(self, width=1280, height=720, title="[CUNE Visual Novel Engine]"):
         pygame.init()
@@ -189,9 +190,9 @@ class CUNE:
         self.is_dialog_visible = False
         self.dialog_history = []
         try:
-            self.load_dialogs("dialogs.json")
-            self.hover_sound = pygame.mixer.Sound("assets/hover_sound2.wav")
-            self.click_sound = pygame.mixer.Sound("assets/select_sound.wav")
+            self.load_dialogs(dialog_file)
+            #self.hover_sound = pygame.mixer.Sound("assets/hover_sound2.wav")
+            #self.click_sound = pygame.mixer.Sound("assets/select_sound.wav")
         except Exception as e:
             print(e)
         self.static_buttons = []
